@@ -51,55 +51,45 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
-      # ── 6. Keystore setup (release builds on main only) ───────────────────
+      # ── 6. Prepare signing (release on main only) ─────────────────────────
       #
-      #  HOW SIGNING WORKS:
+      #  OPTION A — No secrets needed (default):
+      #    A fresh JKS keystore is generated automatically each run.
+      #    APK is signed and installable. Good for dev/testing/sideloading.
+      #    The signing cert changes each run — not suitable for Play Store.
       #
-      #  Option A — No secrets (default, works out of the box):
-      #    The workflow auto-generates a fresh keystore on every run.
-      #    APK is signed and installable. Use this for development/testing.
-      #    Note: cert changes each run — not suitable for Play Store.
-      #
-      #  Option B — Your own permanent keystore (for Play Store):
-      #    1. Generate a JKS keystore (MUST use -storetype JKS):
+      #  OPTION B — Permanent keystore (for Play Store):
+      #    1. Generate a JKS keystore (must use -storetype JKS):
       #         keytool -genkey -v -keystore sentrix.jks \
       #                 -alias sentrix -keyalg RSA -keysize 2048 \
       #                 -validity 10000 -storetype JKS \
       #                 -dname "CN=Sentrix,OU=Dev,O=Sentrix,L=City,ST=State,C=US"
-      #    2. Base64-encode it:
+      #    2. Base64-encode it (Linux/Mac):
       #         base64 -w 0 sentrix.jks
-      #    3. Add these four GitHub Secrets (Settings → Secrets → Actions):
-      #         KEYSTORE_BASE64    ← output of the base64 command above
-      #         KEYSTORE_PASSWORD  ← store password you chose
-      #         KEY_ALIAS          ← sentrix (or whatever alias you used)
-      #         KEY_PASSWORD       ← key password you chose
-      #    The workflow auto-detects the secret and switches to Option B.
+      #    3. Add these GitHub Secrets (repo → Settings → Secrets → Actions):
+      #         KEYSTORE_BASE64    ← output of step 2
+      #         KEYSTORE_PASSWORD  ← your store password
+      #         KEY_ALIAS          ← sentrix (or alias you chose)
+      #         KEY_PASSWORD       ← your key password
+      #    The workflow auto-detects the secret and uses Option B.
       #
-      # ─────────────────────────────────────────────────────────────────────
-
-      # Resolve which keystore option to use.
-      # Writes KEYSTORE_PATH / KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD
-      # into $GITHUB_ENV so the Gradle step picks them up regardless of option.
       - name: Prepare Signing
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         env:
-          # These will be empty strings when the secrets don't exist — that's fine
           SECRET_KEYSTORE_B64:  ${{ secrets.KEYSTORE_BASE64 }}
           SECRET_KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
           SECRET_KEY_ALIAS:     ${{ secrets.KEY_ALIAS }}
           SECRET_KEY_PASS:      ${{ secrets.KEY_PASSWORD }}
         run: |
           if [ -n "$SECRET_KEYSTORE_B64" ]; then
-            # ── Option B: decode keystore from secret ──
             echo "Using provided keystore (Option B)"
             echo "$SECRET_KEYSTORE_B64" | base64 --decode > app/sentrix.jks
-            echo "KEYSTORE_PATH=app/sentrix.jks"         >> $GITHUB_ENV
-            echo "KEYSTORE_PASSWORD=$SECRET_KEYSTORE_PASS" >> $GITHUB_ENV
-            echo "KEY_ALIAS=$SECRET_KEY_ALIAS"           >> $GITHUB_ENV
-            echo "KEY_PASSWORD=$SECRET_KEY_PASS"         >> $GITHUB_ENV
+            echo "SENTRIX_KEYSTORE_PATH=app/sentrix.jks"      >> $GITHUB_ENV
+            echo "SENTRIX_KEYSTORE_PASS=$SECRET_KEYSTORE_PASS" >> $GITHUB_ENV
+            echo "SENTRIX_KEY_ALIAS=$SECRET_KEY_ALIAS"         >> $GITHUB_ENV
+            echo "SENTRIX_KEY_PASS=$SECRET_KEY_PASS"           >> $GITHUB_ENV
           else
-            # ── Option A: generate keystore fresh ──
-            echo "No keystore secret found — generating fresh keystore (Option A)"
+            echo "Generating fresh keystore (Option A)"
             keytool -genkey -v \
               -keystore app/sentrix.jks \
               -alias sentrix \
@@ -111,10 +101,10 @@ jobs:
               -keypass  sentrix123 \
               -dname "CN=Sentrix,OU=Mobile,O=Sentrix,L=Unknown,ST=Unknown,C=US" \
               -noprompt
-            echo "KEYSTORE_PATH=app/sentrix.jks" >> $GITHUB_ENV
-            echo "KEYSTORE_PASSWORD=sentrix123"  >> $GITHUB_ENV
-            echo "KEY_ALIAS=sentrix"             >> $GITHUB_ENV
-            echo "KEY_PASSWORD=sentrix123"       >> $GITHUB_ENV
+            echo "SENTRIX_KEYSTORE_PATH=app/sentrix.jks" >> $GITHUB_ENV
+            echo "SENTRIX_KEYSTORE_PASS=sentrix123"       >> $GITHUB_ENV
+            echo "SENTRIX_KEY_ALIAS=sentrix"              >> $GITHUB_ENV
+            echo "SENTRIX_KEY_PASS=sentrix123"            >> $GITHUB_ENV
           fi
 
       # ── 7. Release APK ───────────────────────────────────────────────────
