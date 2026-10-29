@@ -40,7 +40,7 @@ jobs:
       - name: Grant execute permission
         run: chmod +x gradlew
 
-      # ── 5. Debug APK (always runs, no signing needed) ────────────────────
+      # ── 5. Debug APK (always runs) ────────────────────────────────────────
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace
 
@@ -51,29 +51,34 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
-      # ── 6. Prepare signing (release on main only) ─────────────────────────
+      # ── 6. Release APK — build unsigned (main branch only) ───────────────
+      - name: Build Release APK (unsigned)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: ./gradlew assembleRelease --stacktrace
+
+      # ── 7. Generate or decode keystore, then sign with apksigner ─────────
       #
       #  OPTION A — No secrets needed (default):
-      #    A fresh JKS keystore is generated automatically each run.
-      #    APK is signed and installable. Good for dev/testing/sideloading.
-      #    The signing cert changes each run — not suitable for Play Store.
+      #    A fresh JKS keystore is auto-generated each run.
+      #    APK is signed and installable. Good for sideloading/testing.
+      #    Note: cert differs each run — not for Play Store.
       #
-      #  OPTION B — Permanent keystore (for Play Store):
-      #    1. Generate a JKS keystore (must use -storetype JKS):
-      #         keytool -genkey -v -keystore sentrix.jks \
-      #                 -alias sentrix -keyalg RSA -keysize 2048 \
-      #                 -validity 10000 -storetype JKS \
-      #                 -dname "CN=Sentrix,OU=Dev,O=Sentrix,L=City,ST=State,C=US"
-      #    2. Base64-encode it (Linux/Mac):
-      #         base64 -w 0 sentrix.jks
-      #    3. Add these GitHub Secrets (repo → Settings → Secrets → Actions):
-      #         KEYSTORE_BASE64    ← output of step 2
-      #         KEYSTORE_PASSWORD  ← your store password
-      #         KEY_ALIAS          ← sentrix (or alias you chose)
-      #         KEY_PASSWORD       ← your key password
-      #    The workflow auto-detects the secret and uses Option B.
+      #  OPTION B — Permanent keystore (Play Store / production):
+      #    Generate once on your machine (must use -storetype JKS):
+      #      keytool -genkey -v -keystore sentrix.jks \
+      #              -alias sentrix -keyalg RSA -keysize 2048 \
+      #              -validity 10000 -storetype JKS \
+      #              -dname "CN=Sentrix,OU=Dev,O=Sentrix,L=City,ST=State,C=US"
+      #    Base64-encode it:
+      #      base64 -w 0 sentrix.jks
+      #    Add these four GitHub Secrets (repo Settings → Secrets → Actions):
+      #      KEYSTORE_BASE64    ← output of the base64 command
+      #      KEYSTORE_PASSWORD  ← your store password
+      #      KEY_ALIAS          ← sentrix (or your chosen alias)
+      #      KEY_PASSWORD       ← your key password
+      #    The workflow auto-detects the secret and switches to Option B.
       #
-      - name: Prepare Signing
+      - name: Sign Release APK
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         env:
           SECRET_KEYSTORE_B64:  ${{ secrets.KEYSTORE_BASE64 }}
@@ -81,17 +86,20 @@ jobs:
           SECRET_KEY_ALIAS:     ${{ secrets.KEY_ALIAS }}
           SECRET_KEY_PASS:      ${{ secrets.KEY_PASSWORD }}
         run: |
+          UNSIGNED_APK="app/build/outputs/apk/release/app-release-unsigned.apk"
+          SIGNED_APK="app/build/outputs/apk/release/sentrix-release.apk"
+
+          # ── Prepare keystore ──
           if [ -n "$SECRET_KEYSTORE_B64" ]; then
-            echo "Using provided keystore (Option B)"
-            echo "$SECRET_KEYSTORE_B64" | base64 --decode > app/sentrix.jks
-            echo "SENTRIX_KEYSTORE_PATH=app/sentrix.jks"      >> $GITHUB_ENV
-            echo "SENTRIX_KEYSTORE_PASS=$SECRET_KEYSTORE_PASS" >> $GITHUB_ENV
-            echo "SENTRIX_KEY_ALIAS=$SECRET_KEY_ALIAS"         >> $GITHUB_ENV
-            echo "SENTRIX_KEY_PASS=$SECRET_KEY_PASS"           >> $GITHUB_ENV
+            echo "Option B: decoding keystore from secret"
+            echo "$SECRET_KEYSTORE_B64" | base64 --decode > sentrix.jks
+            KS_PASS="$SECRET_KEYSTORE_PASS"
+            KS_ALIAS="$SECRET_KEY_ALIAS"
+            KEY_PASS="$SECRET_KEY_PASS"
           else
-            echo "Generating fresh keystore (Option A)"
+            echo "Option A: generating fresh JKS keystore"
             keytool -genkey -v \
-              -keystore app/sentrix.jks \
+              -keystore sentrix.jks \
               -alias sentrix \
               -keyalg RSA \
               -keysize 2048 \
@@ -101,26 +109,42 @@ jobs:
               -keypass  sentrix123 \
               -dname "CN=Sentrix,OU=Mobile,O=Sentrix,L=Unknown,ST=Unknown,C=US" \
               -noprompt
-            echo "SENTRIX_KEYSTORE_PATH=app/sentrix.jks" >> $GITHUB_ENV
-            echo "SENTRIX_KEYSTORE_PASS=sentrix123"       >> $GITHUB_ENV
-            echo "SENTRIX_KEY_ALIAS=sentrix"              >> $GITHUB_ENV
-            echo "SENTRIX_KEY_PASS=sentrix123"            >> $GITHUB_ENV
+            KS_PASS="sentrix123"
+            KS_ALIAS="sentrix"
+            KEY_PASS="sentrix123"
           fi
 
-      # ── 7. Release APK ───────────────────────────────────────────────────
-      - name: Build Release APK
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: ./gradlew assembleRelease --stacktrace
+          # ── Locate apksigner (comes with Android build tools) ──
+          APKSIGNER=$(find $ANDROID_HOME/build-tools -name "apksigner" | sort -V | tail -1)
+          echo "Using apksigner: $APKSIGNER"
 
+          # ── Sign the unsigned APK ──
+          $APKSIGNER sign \
+            --ks sentrix.jks \
+            --ks-pass pass:"$KS_PASS" \
+            --ks-key-alias "$KS_ALIAS" \
+            --key-pass pass:"$KEY_PASS" \
+            --out "$SIGNED_APK" \
+            "$UNSIGNED_APK"
+
+          echo "APK signed → $SIGNED_APK"
+
+          # ── Verify signature ──
+          $APKSIGNER verify --verbose "$SIGNED_APK"
+
+          # ── Clean up keystore from runner ──
+          rm -f sentrix.jks
+
+      # ── 8. Upload signed release APK ─────────────────────────────────────
       - name: Upload Release APK
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
           name: sentrix-release-${{ github.run_number }}
-          path: app/build/outputs/apk/release/app-release.apk
+          path: app/build/outputs/apk/release/sentrix-release.apk
           retention-days: 90
 
-      # ── 8. Summary ───────────────────────────────────────────────────────
+      # ── 9. Summary ───────────────────────────────────────────────────────
       - name: Build Summary
         run: |
           echo "=== Sentrix Build Complete ==="
