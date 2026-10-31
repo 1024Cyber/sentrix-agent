@@ -1,124 +1,48 @@
 package com.sentrix.agent.commands
 
 import android.content.Context
-import android.net.wifi.WifiManager
-import android.util.Log
 import com.sentrix.agent.util.RootUtil
 
-/**
- * Connectivity commands.
- *
- * WiFi/Data/Hotspot/Airplane on Android 10+ require root (system APIs are blocked).
- * Each function returns a human-readable result string sent back to the dashboard.
- */
 object ConnectivityCommands {
 
-    private const val TAG = "ConnectivityCmds"
+    fun wifiOn(ctx: Context)  = rootCmd("svc wifi enable",  "WiFi enabled",  "WiFi Off")
+    fun wifiOff(ctx: Context) = rootCmd("svc wifi disable", "WiFi disabled", "WiFi Off")
 
-    // ── WiFi ──────────────────────────────────────────────────────────────────
+    fun dataOn()  = rootCmd("svc data enable",  "Mobile data enabled",  "Mobile data On")
+    fun dataOff() = rootCmd("svc data disable", "Mobile data disabled", "Mobile data Off")
 
-    fun wifiOn(context: Context): String {
-        return if (RootUtil.isRooted()) {
-            // Root path — works on all Android versions
-            val ok = RootUtil.run("svc wifi enable")
-            if (ok) "WiFi enabled" else "WiFi enable failed"
-        } else {
-            // Non-root: WifiManager.setWifiEnabled() was removed in API 29
-            // We can only open the WiFi settings panel for the user
-            "WiFi control requires root on Android 10+"
-        }
-    }
-
-    fun wifiOff(context: Context): String {
-        return if (RootUtil.isRooted()) {
-            val ok = RootUtil.run("svc wifi disable")
-            if (ok) "WiFi disabled" else "WiFi disable failed"
-        } else {
-            "WiFi control requires root on Android 10+"
-        }
-    }
-
-    // ── Mobile Data ───────────────────────────────────────────────────────────
-
-    fun dataOn(): String {
-        return if (RootUtil.isRooted()) {
-            val ok = RootUtil.run("svc data enable")
-            if (ok) "Mobile data enabled" else "Data enable failed"
-        } else {
-            "Data control requires root on Android 10+"
-        }
-    }
-
-    fun dataOff(): String {
-        return if (RootUtil.isRooted()) {
-            val ok = RootUtil.run("svc data disable")
-            if (ok) "Mobile data disabled" else "Data disable failed"
-        } else {
-            "Data control requires root on Android 10+"
-        }
-    }
-
-    // ── Hotspot ───────────────────────────────────────────────────────────────
+    fun btOn()  = rootCmd("svc bluetooth enable",  "Bluetooth enabled",  "Bluetooth On")
+    fun btOff() = rootCmd("svc bluetooth disable", "Bluetooth disabled", "Bluetooth Off")
 
     fun hotspotOn(): String {
-        return if (RootUtil.isRooted()) {
-            // Enable tethering via settings put
-            val ok = RootUtil.run("settings put global tether_dun_required 0")
-            RootUtil.run("cmd connectivity start-tethering -t 0")
-            if (ok) "Hotspot enabled" else "Hotspot enable failed"
-        } else {
-            "Hotspot control requires root"
-        }
+        if (!RootUtil.isRooted()) return needsRoot("Hotspot")
+        RootUtil.run("settings put global tether_dun_required 0")
+        return if (RootUtil.run("cmd connectivity start-tethering -t 0")) "Hotspot enabled" else "Hotspot failed"
     }
 
     fun hotspotOff(): String {
-        return if (RootUtil.isRooted()) {
-            val ok = RootUtil.run("cmd connectivity stop-tethering -t 0")
-            if (ok) "Hotspot disabled" else "Hotspot disable failed"
-        } else {
-            "Hotspot control requires root"
-        }
+        if (!RootUtil.isRooted()) return needsRoot("Hotspot")
+        return if (RootUtil.run("cmd connectivity stop-tethering -t 0")) "Hotspot disabled" else "Hotspot failed"
     }
 
-    // ── Airplane Mode ─────────────────────────────────────────────────────────
-
     fun airplaneOn(): String {
-        return if (RootUtil.isRooted()) {
-            RootUtil.run("settings put global airplane_mode_on 1")
-            val ok = RootUtil.run("am broadcast -a android.intent.action.AIRPLANE_MODE --ez state true")
-            if (ok) "Airplane mode ON" else "Airplane mode failed"
-        } else {
-            "Airplane mode requires root on Android 10+"
-        }
+        if (!RootUtil.isRooted()) return needsRoot("Airplane mode")
+        RootUtil.run("settings put global airplane_mode_on 1")
+        return if (RootUtil.run("am broadcast -a android.intent.action.AIRPLANE_MODE --ez state true"))
+            "Airplane mode ON" else "Airplane mode failed"
     }
 
     fun airplaneOff(): String {
-        return if (RootUtil.isRooted()) {
-            RootUtil.run("settings put global airplane_mode_on 0")
-            val ok = RootUtil.run("am broadcast -a android.intent.action.AIRPLANE_MODE --ez state false")
-            if (ok) "Airplane mode OFF" else "Airplane mode failed"
-        } else {
-            "Airplane mode requires root on Android 10+"
-        }
+        if (!RootUtil.isRooted()) return needsRoot("Airplane mode")
+        RootUtil.run("settings put global airplane_mode_on 0")
+        return if (RootUtil.run("am broadcast -a android.intent.action.AIRPLANE_MODE --ez state false"))
+            "Airplane mode OFF" else "Airplane mode failed"
     }
 
-    // ── Bluetooth ─────────────────────────────────────────────────────────────
-
-    fun bluetoothOn(): String {
-        return if (RootUtil.isRooted()) {
-            val ok = RootUtil.run("svc bluetooth enable")
-            if (ok) "Bluetooth enabled" else "Bluetooth enable failed"
-        } else {
-            "Bluetooth control requires root on Android 13+"
-        }
+    private fun rootCmd(cmd: String, success: String, label: String): String {
+        if (!RootUtil.isRooted()) return needsRoot(label)
+        return if (RootUtil.run(cmd)) success else "$label command failed"
     }
 
-    fun bluetoothOff(): String {
-        return if (RootUtil.isRooted()) {
-            val ok = RootUtil.run("svc bluetooth disable")
-            if (ok) "Bluetooth disabled" else "Bluetooth disable failed"
-        } else {
-            "Bluetooth control requires root on Android 13+"
-        }
-    }
+    private fun needsRoot(feature: String) = "$feature requires root on Android 10+"
 }

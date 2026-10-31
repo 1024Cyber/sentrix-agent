@@ -1,89 +1,43 @@
 package com.sentrix.agent.commands
 
 import android.content.Context
-import android.media.MediaRecorder
-import android.os.Build
-import android.util.Log
-import com.sentrix.agent.network.Uploader
-import com.sentrix.agent.network.WebSocketClient
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import java.io.File
+import android.media.AudioManager
+import android.os.*
 
-/**
- * Microphone recording commands.
- * Records to AAC/M4A in internal cache, uploads on stop.
- * Works without root — requires RECORD_AUDIO permission.
- */
 object AudioCommands {
 
-    private const val TAG = "AudioCmds"
+    fun volRingMax(ctx: Context): String {
+        val am = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        am.setStreamVolume(AudioManager.STREAM_RING, am.getStreamMaxVolume(AudioManager.STREAM_RING), 0)
+        return "Ring volume maxed"
+    }
 
-    private var recorder: MediaRecorder? = null
-    private var outputFile: File?        = null
-    private var isRecording = false
+    fun volRingMute(ctx: Context): String {
+        val am = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        am.setStreamVolume(AudioManager.STREAM_RING, 0, 0)
+        return "Ring muted"
+    }
 
-    fun startMicRecord(context: Context): String {
-        if (isRecording) return "Already recording"
+    fun volMediaMax(ctx: Context): String {
+        val am = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        am.setStreamVolume(AudioManager.STREAM_MUSIC, am.getStreamMaxVolume(AudioManager.STREAM_MUSIC), 0)
+        return "Media volume maxed"
+    }
 
-        outputFile = File(context.cacheDir, "mic_${System.currentTimeMillis()}.m4a")
+    fun volMediaMute(ctx: Context): String {
+        val am = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        am.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0)
+        return "Media muted"
+    }
 
-        recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            MediaRecorder(context)
+    fun vibrate(ctx: Context): String {
+        val effect = VibrationEffect.createOneShot(800, VibrationEffect.DEFAULT_AMPLITUDE)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ctx.getSystemService(VibratorManager::class.java).defaultVibrator.vibrate(effect)
         } else {
             @Suppress("DEPRECATION")
-            MediaRecorder()
+            (ctx.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator).vibrate(effect)
         }
-
-        return try {
-            recorder!!.apply {
-                setAudioSource(MediaRecorder.AudioSource.MIC)
-                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                setAudioSamplingRate(44100)
-                setAudioEncodingBitRate(128000)
-                setOutputFile(outputFile!!.absolutePath)
-                prepare()
-                start()
-            }
-            isRecording = true
-            Log.i(TAG, "Recording started → ${outputFile!!.name}")
-            "Mic recording started"
-        } catch (e: Exception) {
-            Log.e(TAG, "Record start failed: ${e.message}")
-            recorder?.release()
-            recorder = null
-            "Mic record failed: ${e.message}"
-        }
+        return "Vibrating"
     }
-
-    fun stopMicRecord(wsClient: WebSocketClient): String {
-        if (!isRecording || recorder == null) return "Not recording"
-
-        return try {
-            recorder!!.stop()
-            recorder!!.release()
-            recorder = null
-            isRecording = false
-
-            val file = outputFile ?: return "No output file"
-            Log.i(TAG, "Recording stopped (${file.length()} bytes)")
-
-            // Upload in background — don't block command handler
-            CoroutineScope(Dispatchers.IO).launch {
-                val url    = Uploader.upload(file, "audio/mp4")
-                val result = Uploader.resultJson("mic_stop", url)
-                wsClient.send(result)
-                file.delete()
-            }
-
-            "Mic recording stopped — uploading"
-        } catch (e: Exception) {
-            Log.e(TAG, "Record stop failed: ${e.message}")
-            "Stop record failed: ${e.message}"
-        }
-    }
-
-    fun isCurrentlyRecording() = isRecording
 }
