@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Sentrix</string>
+
+    <!-- ── ABOUT SCREEN — replace these with your actual details ── -->
+    <string name="about_author_name">Innocent I.</string>
+    <string name="about_github_url">https://github.com/1024cyber</string>
+    <string name="about_linkedin_url">https://linkedin.com/in/issatx</string>
+    <string name="about_x_url">https://x.com/1024cyber</string>
+    <string name="about_version">1.0.0</string>
 </resources>
