@@ -3,9 +3,11 @@
     <color name="bg">#080B10</color>
     <color name="surface">#0E1420</color>
     <color name="surface2">#141C2E</color>
+    <color name="surface3">#1B2540</color>
     <color name="text_primary">#DDE3F0</color>
     <color name="text_secondary">#8B96B4</color>
     <color name="accent">#3B82F6</color>
+    <color name="accent_dim">#1D3461</color>
     <color name="green">#22C55E</color>
     <color name="red">#EF4444</color>
     <color name="amber">#F59E0B</color>
