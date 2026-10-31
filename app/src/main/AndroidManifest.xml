@@ -34,13 +34,10 @@
     <uses-permission android:name="android.permission.FLASHLIGHT" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-
-    <!-- ── ROOT-ONLY (declared but gated in code) ── -->
     <uses-permission android:name="android.permission.CHANGE_CONFIGURATION" />
     <uses-permission android:name="android.permission.REBOOT" />
 
-    <!-- Hardware features (not required to install) -->
-    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera"       android:required="false" />
     <uses-feature android:name="android.hardware.camera.front" android:required="false" />
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 
@@ -54,7 +51,7 @@
         android:theme="@style/Theme.Sentrix"
         android:requestLegacyExternalStorage="true">
 
-        <!-- Setup / main activity -->
+        <!-- Setup / main screen -->
         <activity
             android:name=".ui.SetupActivity"
             android:exported="true"
@@ -65,7 +62,17 @@
             </intent-filter>
         </activity>
 
-        <!-- Permission request activity (MediaProjection needs an activity context) -->
+        <!-- Commands browser -->
+        <activity
+            android:name=".ui.CommandsActivity"
+            android:exported="false" />
+
+        <!-- About screen -->
+        <activity
+            android:name=".ui.AboutActivity"
+            android:exported="false" />
+
+        <!-- Permission trampoline -->
         <activity
             android:name=".ui.PermissionActivity"
             android:exported="false"
@@ -77,7 +84,7 @@
             android:exported="false"
             android:foregroundServiceType="camera|microphone|location|connectedDevice" />
 
-        <!-- Boot receiver — restarts agent after reboot -->
+        <!-- Boot receiver -->
         <receiver
             android:name=".receiver.BootReceiver"
             android:exported="true">
@@ -87,7 +94,7 @@
             </intent-filter>
         </receiver>
 
-        <!-- File provider for sharing captured files -->
+        <!-- FileProvider -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"
