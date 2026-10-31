@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/bg"
@@ -12,23 +11,53 @@
         android:orientation="vertical"
         android:padding="24dp">
 
-        <!-- Header -->
-        <TextView
-            android:layout_width="wrap_content"
+        <!-- Header row -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Sentrix"
-            android:textSize="28sp"
-            android:textColor="@color/text_primary"
-            android:textStyle="bold"
-            android:layout_marginBottom="4dp"/>
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="24dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Device Agent Setup"
-            android:textSize="14sp"
-            android:textColor="@color/text_secondary"
-            android:layout_marginBottom="32dp"/>
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Sentrix"
+                    android:textSize="26sp"
+                    android:textColor="@color/text_primary"
+                    android:textStyle="bold"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Device Agent"
+                    android:textSize="13sp"
+                    android:textColor="@color/text_secondary"/>
+            </LinearLayout>
+
+            <!-- About button -->
+            <Button
+                android:id="@+id/btnAbout"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="About"
+                android:layout_marginEnd="8dp"/>
+
+            <!-- Commands button -->
+            <Button
+                android:id="@+id/btnCommands"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Commands"/>
+        </LinearLayout>
 
         <!-- Root status -->
         <TextView
@@ -44,8 +73,8 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="YOUR DEVICE TOKEN"
-            android:textSize="11sp"
+            android:text="DEVICE TOKEN"
+            android:textSize="10sp"
             android:textColor="@color/text_secondary"
             android:letterSpacing="0.08"
             android:layout_marginBottom="6dp"/>
@@ -54,7 +83,7 @@
             android:id="@+id/textToken"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="12sp"
+            android:textSize="11sp"
             android:textColor="@color/text_primary"
             android:fontFamily="monospace"
             android:padding="12dp"
@@ -74,7 +103,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="RELAY URL"
-            android:textSize="11sp"
+            android:textSize="10sp"
             android:textColor="@color/text_secondary"
             android:letterSpacing="0.08"
             android:layout_marginBottom="6dp"/>
@@ -82,7 +111,7 @@
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="wss://your-relay.railway.app"
+            android:hint="wss://your-relay.onrender.com"
             style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
             android:layout_marginBottom="20dp">
             <com.google.android.material.textfield.TextInputEditText
@@ -98,7 +127,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="DEVICE NAME"
-            android:textSize="11sp"
+            android:textSize="10sp"
             android:textColor="@color/text_secondary"
             android:letterSpacing="0.08"
             android:layout_marginBottom="6dp"/>
@@ -116,12 +145,12 @@
                 android:inputType="text"/>
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Supabase section -->
+        <!-- Supabase -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="SUPABASE (FILE UPLOADS)"
-            android:textSize="11sp"
+            android:textSize="10sp"
             android:textColor="@color/text_secondary"
             android:letterSpacing="0.08"
             android:layout_marginBottom="6dp"/>
@@ -154,7 +183,7 @@
                 android:fontFamily="monospace"/>
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Save button -->
+        <!-- Save -->
         <Button
             android:id="@+id/btnSave"
             android:layout_width="match_parent"
